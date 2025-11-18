@@ -1,0 +1,83 @@
+ibkr:
+  host: "127.0.0.1"
+  port: 7497
+  client_id: 1
+
+universe:
+  symbols: ["SPY", "QQQ"]
+  primary_exchange: "SMART"
+  currency: "USD"
+
+data:
+  bar_size: "5 mins"
+  history_duration: "1 Y"
+  storage_path: "./data"
+  what_to_show: "TRADES"
+
+strategy:
+  # Trend_v1_loose baseline (high-frequency, loosened filters; no hard stop/target/regime)
+  name: "spy_qqq_ensemble"
+  parameters:
+    bar_timeframe: "5min"
+    trend:
+      ema_fast: 20
+      ema_slow: 50
+      breakout_lookback_bars: 12   # loosened from 20
+      min_breakout_pct: 0.18       # typical loosened value (e.g., 0.05–0.10–0.18 tested)
+      atr_lookback: 14
+      # Note: stop_distance_pct / take_profit_* / regime_* intentionally omitted in this baseline
+    pullback:
+      min_trend_bars: 6            # from 10 → 6
+      rsi_period: 14
+      rsi_lower: 35                # widened from 30
+      rsi_upper: 55                # widened from 45
+    vwap:
+      lookback_bars_slope: 10
+      max_extension_pct: 0.5
+    ensemble:
+      min_votes_long: 1            # loosened from 2
+
+risk:
+  max_risk_per_trade_pct: 0.5
+  max_daily_loss_pct: 2.0
+  max_positions: 2
+  trade_start_time: "09:35"
+  trade_end_time: "15:50"
+  emergency_flatten_on_exit: true
+  holding:
+    allow_overnight: false
+    max_hold_minutes: 240
+  intraday_kill_switch:
+    enabled: true
+    max_stops_per_day: 3
+    max_intraday_loss_pct: 3.0
+  stop_cooldown:
+    enabled: true
+    cooldown_bars: 3
+
+backtest:
+  initial_capital: 100000.0
+  slippage_bps: 1
+  commission_per_share: 0.005
+  start_date: "2024-01-01"
+  end_date: "2025-11-13"
+
+live:
+  paper_trading: true
+  polling_interval_seconds: 30
+  log_dir: "./logs"
+  dry_run: false
+
+# Optional ML meta-filter (disabled in this loose baseline)
+ml:
+  enabled: false
+  model_path: "./models/spy_meta.pkl"
+  horizon_bars: 3
+  target_move_pct: 0.1
+  min_probability_long: 0.55
+  log_only: false
+  train_start_date: "2024-01-01"
+  train_end_date: "2025-04-30"
+  val_start_date: "2025-05-01"
+  val_end_date: "2025-11-13"
+

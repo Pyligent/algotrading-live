@@ -1,0 +1,416 @@
+ibkr:
+  host: "127.0.0.1"
+  port: 7497       # paper trading default
+  client_id: 1
+
+universe:
+  symbols: ["SPY", "QQQ","IWM"]
+  primary_exchange: "SMART"
+  currency: "USD"
+
+data:
+  bar_size: "5 mins"
+  history_duration: "2 Y"
+  storage_path: "./data"
+  what_to_show: "TRADES"
+
+
+
+
+strategy:
+  name: "spy_qqq_ensemble"
+  parameters:
+    bar_timeframe: "5min"
+    trend:
+      ema_fast: 20
+      ema_slow: 50
+      breakout_lookback_bars: 12
+      min_breakout_pct: 0.10        # ↓ from 0.18, less extension required
+      atr_lookback: 14
+
+      stop_distance_pct: 0.5
+      take_profit_rr: 2.0
+      # ATR-based stops (preferred); fallback to percent if stop_mode: "percent"
+      stop_mode: "atr"              # "atr" or "percent"
+      stop_atr_multiple: 1.5
+
+      regime_atr_lookback: 14
+      regime_min_atr_pct: 0.15      # ↓ from 0.25
+
+    pullback:
+      min_trend_bars: 6
+      rsi_period: 14
+      rsi_lower: 35
+      rsi_upper: 55
+    vwap:
+      lookback_bars_slope: 10
+      max_extension_pct: 0.5
+    ensemble:
+      min_votes_long: 1
+
+
+
+risk:
+  max_risk_per_trade_pct: 1.25
+  max_daily_loss_pct: 2.0
+  max_positions: 2
+  trade_start_time: "09:35"
+  trade_end_time: "15:50"
+  emergency_flatten_on_exit: true
+  holding:
+    allow_overnight: false
+    max_hold_minutes: 240
+  intraday_kill_switch:
+    enabled: true
+    max_stops_per_day: 3
+    max_intraday_loss_pct: 3.0
+  stop_cooldown:
+    enabled: true
+    cooldown_bars: 3
+
+backtest:
+  initial_capital: 100000.0
+  slippage_bps: 1
+  commission_per_share: 0.005
+  start_date: "2023-01-01"
+  end_date: "2025-11-13"
+
+live:
+  paper_trading: true
+  polling_interval_seconds: 30
+  log_dir: "./logs"
+  dry_run: false
+
+# Machine learning meta-filter (optional)
+ml:
+  enabled: true
+  model_path: "./models/spyqqq_meta.pkl"
+  horizon_bars: 3           # bars ahead for label horizon
+  target_move_pct: 0.1      # threshold (%) for "good" move label
+  min_probability_long: 0.62
+  log_only: false           # if true, log decisions but don't veto trades
+  train_start_date: "2023-01-01"
+  train_end_date: "2024-12-31"
+  val_start_date: "2025-01-01"
+  val_end_date: "2025-06-30"
+
+
+
+# Per-symbol overrides (optional)
+symbol_overrides:
+  SPY:
+    risk:
+      max_risk_per_trade_pct: 1.0
+      max_daily_loss_pct: 2.0
+    ml:
+      min_probability_long: 0.62
+  QQQ:
+    risk:
+      max_risk_per_trade_pct: 0.5
+      max_daily_loss_pct: 2.0
+    ml:
+      min_probability_long: 0.68
+    trend:
+      stop_atr_multiple: 1.2
+  IWM:
+    risk:
+      max_risk_per_trade_pct: 0.8
+      max_daily_loss_pct: 2.0
+    ml:
+      min_probability_long: 0.58
+active_profile: "core_trend_ml_strict"
+profiles:
+  core_trend_ml_strict:
+    description: "Core Trend+ML strict: SPY/QQQ, ATR stops, ML p_up 0.62, 1.0% risk"
+    universe_override:
+      symbols: ["SPY", "QQQ"]
+      primary_exchange: "SMART"
+      currency: "USD"
+    strategy:
+      name: "spy_qqq_ensemble"
+      parameters:
+        bar_timeframe: "5min"
+        trend:
+          ema_fast: 20
+          ema_slow: 50
+          breakout_lookback_bars: 12
+          min_breakout_pct: 0.10
+          atr_lookback: 14
+          stop_mode: "atr"
+          stop_atr_multiple: 1.5
+          stop_distance_pct: 0.5
+          take_profit_rr: 2.0
+          regime_atr_lookback: 14
+          regime_min_atr_pct: 0.15
+        pullback:
+          min_trend_bars: 6
+          rsi_period: 14
+          rsi_lower: 35
+          rsi_upper: 55
+        vwap:
+          lookback_bars_slope: 10
+          max_extension_pct: 0.5
+        ensemble:
+          min_votes_long: 1
+    risk:
+      max_risk_per_trade_pct: 1.0
+      max_daily_loss_pct: 2.0
+      max_positions: 2
+      trade_start_time: "09:35"
+      trade_end_time: "15:50"
+      emergency_flatten_on_exit: true
+      holding:
+        allow_overnight: false
+        max_hold_minutes: 240
+      intraday_kill_switch:
+        enabled: true
+        max_stops_per_day: 3
+        max_intraday_loss_pct: 3.0
+      stop_cooldown:
+        enabled: true
+        cooldown_bars: 3
+    ml:
+      enabled: true
+      model_path: "./models/spyqqq_meta.pkl"
+      horizon_bars: 3
+      target_move_pct: 0.1
+      min_probability_long: 0.62
+      log_only: false
+      train_start_date: "2023-01-01"
+      train_end_date: "2024-12-31"
+      val_start_date: "2025-01-01"
+      val_end_date: "2025-06-30"
+  # NOTE: vwap_mr_spy_qqq_v1 is experimental only. Current backtests show weak or near-zero edge.
+  # Do NOT use this profile for live trading; it's for research only.
+  vwap_mr_spy_qqq_v1:
+    description: "VWAP mean-reversion on SPY & QQQ, 5-min, smaller risk"
+    strategy:
+      name: "spy_qqq_vwap_mr"
+      parameters:
+        bar_timeframe: "5min"
+        vwap_mr:
+          long_extension_pct: 0.35
+          short_extension_pct: 0.35
+          rsi_period: 14
+          rsi_long_max: 38
+          atr_lookback: 14
+          stop_mode: "atr"
+          stop_atr_multiple: 0.7
+          take_profit_rr: 1.8
+          max_hold_minutes: 120
+          entry_start_time: "09:40"
+          entry_end_time: "15:30"
+          allow_overnight: false
+          trend_ema_fast: 20
+          trend_ema_slow: 50
+    risk:
+      max_risk_per_trade_pct: 0.5
+      max_daily_loss_pct: 2.0
+      max_positions: 2
+      trade_start_time: "09:35"
+      trade_end_time: "15:50"
+      emergency_flatten_on_exit: true
+      intraday_kill_switch:
+        enabled: false
+        max_stops_per_day: 3
+        max_intraday_loss_pct: 2.5
+      stop_cooldown:
+        enabled: true
+        cooldown_bars: 2
+    ml:
+      enabled: false
+  trend_ml_spy_qqq_iwm_v1:
+    description: "Trend+ML on SPY, QQQ, IWM; 5-min bars, ATR stops"
+    universe_override:
+      symbols: ["SPY", "QQQ", "IWM"]
+      primary_exchange: "SMART"
+      currency: "USD"
+    strategy:
+      name: "spy_qqq_ensemble"
+      parameters:
+        bar_timeframe: "5min"
+        trend:
+          ema_fast: 20
+          ema_slow: 50
+          breakout_lookback_bars: 12
+          min_breakout_pct: 0.10
+          atr_lookback: 14
+          stop_mode: "atr"
+          stop_atr_multiple: 1.5
+          stop_distance_pct: 0.5
+          take_profit_rr: 2.0
+          regime_atr_lookback: 14
+          regime_min_atr_pct: 0.15
+        pullback:
+          min_trend_bars: 6
+          rsi_period: 14
+          rsi_lower: 35
+          rsi_upper: 55
+        vwap:
+          lookback_bars_slope: 10
+          max_extension_pct: 0.5
+        ensemble:
+          min_votes_long: 1
+    risk:
+      max_risk_per_trade_pct: 0.8
+      max_daily_loss_pct: 2.5
+      max_positions: 3
+      trade_start_time: "09:35"
+      trade_end_time: "15:50"
+      emergency_flatten_on_exit: true
+      holding:
+        allow_overnight: false
+        max_hold_minutes: 240
+      intraday_kill_switch:
+        enabled: true
+        max_stops_per_day: 3
+        max_intraday_loss_pct: 3.0
+      stop_cooldown:
+        enabled: true
+        cooldown_bars: 3
+    ml:
+      enabled: true
+      model_path: "./models/spyqqqiwm_meta.pkl"
+      horizon_bars: 3
+      target_move_pct: 0.1
+      min_probability_long: 0.60
+      log_only: false
+      train_start_date: "2023-01-01"
+      train_end_date: "2024-12-31"
+      val_start_date: "2025-01-01"
+      val_end_date: "2025-06-30"
+  trend_ml_spy_iwm_satellite_v1:
+    # STABLE – do not change parameters without explicit intention.
+    description: "Satellite Trend+ML focusing on SPY & IWM (drop QQQ)"
+    universe_override:
+      symbols: ["SPY", "IWM"]
+      primary_exchange: "SMART"
+      currency: "USD"
+    strategy:
+      name: "spy_iwm_ensemble"
+      parameters:
+        bar_timeframe: "5min"
+        trend:
+          ema_fast: 20
+          ema_slow: 50
+          breakout_lookback_bars: 12
+          min_breakout_pct: 0.10
+          atr_lookback: 14
+          stop_mode: "atr"
+          stop_atr_multiple: 1.3
+          stop_distance_pct: 0.5
+          take_profit_rr: 2.0
+          regime_atr_lookback: 10
+          regime_min_atr_pct: 0.15
+        pullback:
+          min_trend_bars: 6
+          rsi_period: 14
+          rsi_lower: 35
+          rsi_upper: 55
+        vwap:
+          lookback_bars_slope: 10
+          max_extension_pct: 0.5
+        ensemble:
+          min_votes_long: 1
+    risk:
+      max_risk_per_trade_pct: 0.8
+      max_daily_loss_pct: 2.5
+      max_positions: 2
+      trade_start_time: "09:35"
+      trade_end_time: "15:50"
+      emergency_flatten_on_exit: true
+      holding:
+        allow_overnight: false
+        max_hold_minutes: 240
+      intraday_kill_switch:
+        enabled: true
+        max_stops_per_day: 3
+        max_intraday_loss_pct: 3.0
+      stop_cooldown:
+        enabled: true
+        cooldown_bars: 3
+    # Per-profile symbol overrides for SPY/IWM only
+    symbol_overrides:
+      SPY:
+        risk:
+          max_risk_per_trade_pct: 1.2
+          max_daily_loss_pct: 2.0
+        ml:
+          min_probability_long: 0.60
+      IWM:
+        risk:
+          max_risk_per_trade_pct: 1.0
+          max_daily_loss_pct: 2.0
+        ml:
+          min_probability_long: 0.58
+    ml:
+      enabled: true
+      model_path: "./models/spy_iwm_satellite_meta.pkl"
+      horizon_bars: 3
+      target_move_pct: 0.1
+      min_probability_long: 0.60
+      log_only: false
+      train_start_date: "2023-01-01"
+      train_end_date: "2024-12-31"
+      val_start_date: "2025-01-01"
+      val_end_date: "2025-06-30"
+  sweep_th0.65_risk0.5_tp2.0:
+    description: "Sweep: SPY/QQQ only, ML th=0.65, risk=0.5%, TP RR=2.0"
+    universe_override:
+      symbols: ["SPY", "QQQ"]
+      primary_exchange: "SMART"
+      currency: "USD"
+    strategy:
+      name: "spy_qqq_ensemble"
+      parameters:
+        bar_timeframe: "5min"
+        trend:
+          ema_fast: 20
+          ema_slow: 50
+          breakout_lookback_bars: 12
+          min_breakout_pct: 0.10
+          atr_lookback: 14
+          stop_mode: "atr"
+          stop_atr_multiple: 1.5
+          stop_distance_pct: 0.5
+          take_profit_rr: 2.0
+          regime_atr_lookback: 14
+          regime_min_atr_pct: 0.15
+        pullback:
+          min_trend_bars: 6
+          rsi_period: 14
+          rsi_lower: 35
+          rsi_upper: 55
+        vwap:
+          lookback_bars_slope: 10
+          max_extension_pct: 0.5
+        ensemble:
+          min_votes_long: 1
+    risk:
+      max_risk_per_trade_pct: 0.5
+      max_daily_loss_pct: 2.0
+      max_positions: 2
+      trade_start_time: "09:35"
+      trade_end_time: "15:50"
+      emergency_flatten_on_exit: true
+      holding:
+        allow_overnight: false
+        max_hold_minutes: 240
+      intraday_kill_switch:
+        enabled: true
+        max_stops_per_day: 3
+        max_intraday_loss_pct: 3.0
+      stop_cooldown:
+        enabled: true
+        cooldown_bars: 3
+    ml:
+      enabled: true
+      model_path: "./models/spyqqq_meta.pkl"
+      horizon_bars: 3
+      target_move_pct: 0.1
+      min_probability_long: 0.65
+      log_only: false
+      train_start_date: "2023-01-01"
+      train_end_date: "2024-12-31"
+      val_start_date: "2025-01-01"
+      val_end_date: "2025-06-30"

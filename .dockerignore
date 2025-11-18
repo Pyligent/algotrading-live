@@ -1,0 +1,16 @@
+.venv
+__pycache__/
+*.pyc
+.git
+.gitignore
+.cursorignore
+*.ipynb_checkpoints
+backtest_output/
+logs/
+data/
+models/
+ml_reports/
+*.png
+*.pdf
+
+

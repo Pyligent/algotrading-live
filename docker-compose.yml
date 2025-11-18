@@ -1,0 +1,24 @@
+version: "3.9"
+services:
+  algo:
+    build: .
+    container_name: algotrading-app
+    working_dir: /app
+    # For Linux, uncomment to access host 127.0.0.1 directly:
+    # network_mode: host
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./backtest_output:/app/backtest_output
+      - ./ml_reports:/app/ml_reports
+      - ./config:/app/config
+    # Default example command: backtest core profile
+    command: ["backtest", "--config", "config/config.yaml", "--profile", "core_trend_ml_strict"]
+    # For macOS/Windows, connect to IB Gateway on the host via host.docker.internal
+    # Make sure config.ibkr.host is set to "host.docker.internal"
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped
+
+

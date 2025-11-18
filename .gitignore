@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+backtest_output/
+logs/
+data/
+models/
+ml_reports/
+*.png
+*.pdf
+.DS_Store
