@@ -1,6 +1,6 @@
-# IB SPY/QQQ Ensemble Algo (Phase 1)
+# IB SPY/QQQ/IWM Ensemble Algo (Phase 1)
 
-This is a minimal local algorithmic trading project for Interactive Brokers paper trading using TWS/IB Gateway. It trades SPY and QQQ intraday using an ensemble of three long-only strategies:
+This is a minimal local algorithmic trading project for Interactive Brokers paper trading using TWS/IB Gateway. It trades SPY, QQQ, and IWM intraday using an ensemble of three long-only strategies:
 
 1. Trend / Breakout filter
 2. Pullback-in-trend timing
